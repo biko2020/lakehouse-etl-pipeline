@@ -24,7 +24,7 @@ This pipeline demonstrates real-world data engineering expertise across three ke
 │      BRONZE LAYER      │      │      SILVER LAYER      │      │       GOLD LAYER       │
 │   (Raw Ingestion)      │      │  (Cleanse & Model)     │      │   (Business Logic)     │
 ├────────────────────────┤      ├────────────────────────┤      ├────────────────────────┤
-│ • Ingest CSV/JSON      │─────▶│ • Deduplication        │─────▶│ • Sales Aggregations  │
+│ • Ingest CSV/JSON      │─────▶│ • Deduplication        │─────▶│ • Sales Aggregations   │
 │ • Schema Evolution     │      │ • Type Casting         │      │ • Customer Lifetime Val│
 │ • Metadata Injection   │      │ • Join Dim/Fact Tables │      │ • SQL Analytics Ready  │
 └────────────────────────┘      └────────────────────────┘      └────────────────────────┘
@@ -50,6 +50,9 @@ lakehouse-etl-pipeline/
 │   ├── bronze_pipeline.py        # Schema inference & cloudFiles setup
 │   ├── silver_pipeline.py        # MERGE (upsert) logic & data quality checks
 │   └── gold_pipeline.py          # Spark SQL transformations
+│
+├── config/                       # Pipeline configuration
+│   └── pipeline_config.py        # Path settings (DBFS / S3 / ADLS)
 │
 ├── docs/                         # Architecture diagrams & data dictionary
 ├── requirements.txt              # Dependencies
@@ -83,7 +86,7 @@ Delta Lake `MERGE` ensures that pipeline retries never produce duplicates. The S
 > Use Databricks Repos to import this repository directly into your workspace.
 
 **2. Configure Paths**
-> Update `data_path` in `config/pipeline_config` to point to your DBFS or S3 location.
+> Update `data_path` in `config/pipeline_config.py` to point to your DBFS or S3 location.
 
 **3. Run the Pipeline**
 > Execute notebooks sequentially, or orchestrate via Databricks Workflows:
