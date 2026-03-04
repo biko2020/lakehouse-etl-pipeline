@@ -86,7 +86,7 @@ Delta Lake `MERGE` ensures that pipeline retries never produce duplicates. The S
 > Use Databricks Repos to import this repository directly into your workspace.
 
 **2. Configure Paths**
-> Update `data_path` in `config/pipeline_config.py` to point to your DBFS or S3 location.
+> Update `config/pipeline_config.py` — set your `CATALOG`, `SCHEMA`, and `VOLUME` names to match what you created in Databricks Catalog Explorer.
 
 **3. Run the Pipeline**
 > Execute notebooks sequentially, or orchestrate via Databricks Workflows:
