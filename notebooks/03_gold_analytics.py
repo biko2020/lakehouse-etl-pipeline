@@ -27,7 +27,7 @@
 
 import sys
 
-sys.path.insert(0, "/Workspace/Repos/<your-username>/lakehouse-etl-pipeline")
+sys.path.insert(0, "/Workspace/Repos/aitoufkirbrahimab@gmail.com/lakehouse-etl-pipeline")
 
 from config.pipeline_config import (
     CATALOG, SCHEMA,

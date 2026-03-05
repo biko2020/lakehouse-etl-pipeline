@@ -39,6 +39,9 @@ lakehouse-etl-pipeline/
 │
 ├── data/                         # Local simulation of Cloud Storage (S3/ADLS)
 │   ├── raw/                      # Source CSVs (Orders, Customers, Payments)
+│   │   ├── orders/               # orders.csv
+│   │   ├── customers/            # customers.csv
+│   │   └── products/             # products.csv
 │   └── delta/                    # Delta Lake storage (Bronze / Silver / Gold)
 │
 ├── notebooks/                    # Entry points for Databricks Workflows
