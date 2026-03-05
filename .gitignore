@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Databricks
+.databricks/
+out/
+scripts/.ipynb_checkpoints/
+
+# Data 
+data/raw/*
+data/delta/*
+!data/raw/.gitkeep

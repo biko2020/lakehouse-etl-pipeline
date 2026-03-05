@@ -1,6 +1,6 @@
 # 🏪 Retail Intelligence Lakehouse
 ### End-to-End Databricks ETL Pipeline · Medallion Architecture
-
+This project demonstrates my ability to design scalable, cost-efficient data pipelines on Databricks. I help businesses reduce cloud spend, ensure data reliability, and deliver analytics-ready datasets for BI and decision-making.
 ---
 
 ## 📌 Overview
