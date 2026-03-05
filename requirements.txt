@@ -1,0 +1,22 @@
+# =============================================================================
+# requirements.txt
+# Retail Intelligence Lakehouse — Databricks Free Edition
+#
+# NOTE: Most dependencies below (PySpark, Delta Lake) are pre-installed
+# on Databricks Runtime 13.3 LTS+. This file is used for:
+#   - Local development & unit testing
+#   - CI/CD pipelines
+#   - IDE autocompletion
+# =============================================================================
+
+# ── Core (pre-installed on Databricks Runtime) ────────────────────────────────
+pyspark==3.4.1
+delta-spark==2.4.0
+
+# ── Local development & testing ───────────────────────────────────────────────
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# ── Code quality ──────────────────────────────────────────────────────────────
+black==23.11.0
+flake8==6.1.0
