@@ -287,7 +287,7 @@ def build_and_write_sales_aggregations(
 
     df = build_sales_aggregations(spark, silver_orders, silver_products)
     write_gold_table(spark, df, gold_table_path, gold_table_name, partition_by="year_month")
-    optimize_gold_table(spark, gold_table_name, zorder_columns=["year_month", "revenue_rank"])
+    optimize_gold_table(spark, gold_table_name, zorder_columns=["revenue_rank", "product_id"])
 
 
 def build_and_write_customer_ltv(
