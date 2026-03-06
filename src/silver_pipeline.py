@@ -168,23 +168,26 @@ def run_quality_checks(df: DataFrame, source: str) -> DataFrame:
     if total == 0:
         raise ValueError(f"❌ Data quality FAILED for {source}: DataFrame is empty after cleansing.")
 
-    checks = {
-        "orders": [
-            ("order_id nulls",    df.filter(F.col("order_id").isNull()).count(),    0,     "critical"),
-            ("negative quantity", df.filter(F.col("quantity") < 0).count(),         0,     "critical"),
-            ("null order_date",   df.filter(F.col("order_date").isNull()).count(),  total * 0.05, "warning"),
-        ],
-        "customers": [
-            ("customer_id nulls", df.filter(F.col("customer_id").isNull()).count(), 0,     "critical"),
+    if source == "orders":
+        checks = [
+            ("order_id nulls",    df.filter(F.col("order_id").isNull()).count(),   0,            "critical"),
+            ("negative quantity", df.filter(F.col("quantity") < 0).count(),        0,            "critical"),
+            ("null order_date",   df.filter(F.col("order_date").isNull()).count(), total * 0.05, "warning"),
+        ]
+    elif source == "customers":
+        checks = [
+            ("customer_id nulls", df.filter(F.col("customer_id").isNull()).count(), 0,            "critical"),
             ("null email",        df.filter(F.col("email").isNull()).count(),        total * 0.10, "warning"),
-        ],
-        "products": [
-            ("product_id nulls",  df.filter(F.col("product_id").isNull()).count(),  0,     "critical"),
+        ]
+    elif source == "products":
+        checks = [
+            ("product_id nulls",  df.filter(F.col("product_id").isNull()).count(),  0,            "critical"),
             ("zero price",        df.filter(F.col("unit_price") == 0).count(),      total * 0.05, "warning"),
-        ],
-    }
+        ]
+    else:
+        checks = []
 
-    for check_name, failed_count, threshold, severity in checks.get(source, []):
+    for check_name, failed_count, threshold, severity in checks:
         if failed_count > threshold:
             msg = f"[{severity.upper()}] {source}.{check_name}: {failed_count} records failed (threshold: {threshold})"
             if severity == "critical":
