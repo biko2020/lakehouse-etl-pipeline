@@ -36,8 +36,8 @@ def cleanse_orders(df: DataFrame) -> DataFrame:
 
         # Type safety (Bronze ingests everything as strings with schema,
         # but re-casting ensures downstream consistency)
-        .withColumn("quantity",    F.col("quantity").cast("int"))
         .withColumn("unit_price",  F.col("unit_price").cast("double"))
+        .withColumn("quantity",    F.col("quantity").cast("double").cast("int"))
         .withColumn("order_date",  F.to_date(F.col("order_date")))
         .withColumn("status",      F.lower(F.trim(F.col("status"))))
 
