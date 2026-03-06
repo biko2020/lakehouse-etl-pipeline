@@ -81,15 +81,14 @@ def read_with_autoloader(
     """
     schema = get_autoloader_schema(source)
 
-    # Schema evolution mode: addNewColumns merges schema changes automatically
-    schema_evolution_mode = "addNewColumns" if schema_evolution else "failOnNewColumns"
-
+    # When an explicit schema is provided, evolution mode must be "none"
+    # "addNewColumns" is only compatible with schema inference (no .schema())
     reader = (
         spark.readStream
              .format("cloudFiles")
              .option("cloudFiles.format", file_format)
              .option("cloudFiles.schemaLocation", checkpoint_path)
-             .option("cloudFiles.schemaEvolutionMode", schema_evolution_mode)
+             .option("cloudFiles.schemaEvolutionMode", "none")
              .option("header", "true")          # CSV only
              .option("inferSchema", "false")     # We always use explicit schema
              .schema(schema)
