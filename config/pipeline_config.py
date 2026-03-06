@@ -21,9 +21,9 @@ VOLUME_BASE = f"/Volumes/{CATALOG}/{SCHEMA}/{VOLUME}"
 
 # ── Raw data paths (CSV source files go here) ────────────────────────────────
 RAW_PATH       = f"{VOLUME_BASE}/raw"
-RAW_ORDERS     = f"{RAW_PATH}/orders"
-RAW_CUSTOMERS  = f"{RAW_PATH}/customers"
-RAW_PRODUCTS   = f"{RAW_PATH}/products"
+RAW_ORDERS     = f"{RAW_PATH}/orders.csv"
+RAW_CUSTOMERS  = f"{RAW_PATH}/customers.csv"
+RAW_PRODUCTS   = f"{RAW_PATH}/products.csv"
 
 # ── Delta Lake paths (medallion layers) ──────────────────────────────────────
 DELTA_BASE     = f"{VOLUME_BASE}/delta"
