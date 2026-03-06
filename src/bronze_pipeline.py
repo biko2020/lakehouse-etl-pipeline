@@ -24,29 +24,32 @@ def get_autoloader_schema(source: str) -> StructType:
         StringType, IntegerType, DoubleType, DateType
     )
 
+    # Bronze ingests EVERYTHING as StringType — no parsing at this layer.
+    # Silver is responsible for all type casting (dates, numbers, etc.)
+    # This prevents silent null rows caused by type mismatch on raw CSV data.
     schemas = {
         "orders": StructType([
-            StructField("order_id",    StringType(),  nullable=False),
-            StructField("customer_id", StringType(),  nullable=False),
-            StructField("product_id",  StringType(),  nullable=False),
-            StructField("quantity",    IntegerType(), nullable=True),
-            StructField("unit_price",  DoubleType(),  nullable=True),
-            StructField("order_date",  DateType(),    nullable=True),
-            StructField("status",      StringType(),  nullable=True),
+            StructField("order_id",    StringType(), nullable=True),
+            StructField("customer_id", StringType(), nullable=True),
+            StructField("product_id",  StringType(), nullable=True),
+            StructField("quantity",    StringType(), nullable=True),
+            StructField("unit_price",  StringType(), nullable=True),
+            StructField("order_date",  StringType(), nullable=True),
+            StructField("status",      StringType(), nullable=True),
         ]),
         "customers": StructType([
-            StructField("customer_id",  StringType(), nullable=False),
+            StructField("customer_id",  StringType(), nullable=True),
             StructField("first_name",   StringType(), nullable=True),
             StructField("last_name",    StringType(), nullable=True),
             StructField("email",        StringType(), nullable=True),
             StructField("country",      StringType(), nullable=True),
-            StructField("signup_date",  DateType(),   nullable=True),
+            StructField("signup_date",  StringType(), nullable=True),
         ]),
         "products": StructType([
-            StructField("product_id",   StringType(), nullable=False),
+            StructField("product_id",   StringType(), nullable=True),
             StructField("product_name", StringType(), nullable=True),
             StructField("category",     StringType(), nullable=True),
-            StructField("unit_price",   DoubleType(), nullable=True),
+            StructField("unit_price",   StringType(), nullable=True),
             StructField("supplier_id",  StringType(), nullable=True),
         ]),
     }
