@@ -174,7 +174,7 @@ def build_daily_sales_trend(
     # ── Rolling 7-day revenue average ────────────────────────────────────────
     window_7d = (
         Window
-        .orderBy(F.col("order_date").cast("long"))
+        .orderBy(F.unix_date(F.col("order_date")))
         .rowsBetween(-6, 0)    # Current row + 6 preceding rows
     )
     daily = daily.withColumn(
