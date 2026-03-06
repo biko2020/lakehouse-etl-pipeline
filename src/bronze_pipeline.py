@@ -1,32 +1,20 @@
 # =============================================================================
 # src/bronze_pipeline.py
 # Retail Intelligence Lakehouse — Bronze Layer (Reusable Module)
-# Responsibilities:
-#   - Autoloader (cloudFiles) setup for incremental ingestion
-#   - Schema inference & enforcement
-#   - Metadata injection (_ingested_at, _source_file)
-#   - Write raw data to Delta Lake Bronze tables
+# NOTE: Uses batch spark.read instead of Autoloader streaming.
+#       Autoloader streaming is not supported on Databricks Free Edition Serverless.
 # =============================================================================
 
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType
-from delta.tables import DeltaTable
+from pyspark.sql.types import StructType, StructField, StringType
 
 
-def get_autoloader_schema(source: str) -> StructType:
+def get_bronze_schema(source: str) -> StructType:
     """
-    Returns explicit schemas per source to enforce types at ingestion time.
-    Using explicit schemas avoids schema inference cost on every run.
+    Returns all-StringType schemas per source.
+    Bronze never casts — Silver handles all type casting.
     """
-    from pyspark.sql.types import (
-        StructType, StructField,
-        StringType, IntegerType, DoubleType, DateType
-    )
-
-    # Bronze ingests EVERYTHING as StringType — no parsing at this layer.
-    # Silver is responsible for all type casting (dates, numbers, etc.)
-    # This prevents silent null rows caused by type mismatch on raw CSV data.
     schemas = {
         "orders": StructType([
             StructField("order_id",    StringType(), nullable=True),
@@ -55,98 +43,75 @@ def get_autoloader_schema(source: str) -> StructType:
     }
 
     if source not in schemas:
-        raise ValueError(f"No schema defined for source: '{source}'. Expected one of {list(schemas.keys())}")
+        raise ValueError(f"No schema defined for source: '{source}'. Expected: {list(schemas.keys())}")
 
     return schemas[source]
 
 
-def read_with_autoloader(
+def read_batch(
     spark: SparkSession,
     raw_path: str,
-    checkpoint_path: str,
     source: str,
     file_format: str = "csv",
-    schema_evolution: bool = True,
-) -> object:
+) -> DataFrame:
     """
-    Configures and returns an Autoloader (cloudFiles) streaming reader.
+    Reads raw CSV files from a Volume path using batch spark.read.
+    Injects _ingested_at and _source_file metadata columns.
 
     Args:
-        spark           : Active SparkSession
-        raw_path        : Source path where raw files land (Volume path)
-        checkpoint_path : Path for Autoloader to track processed files
-        source          : One of 'orders', 'customers', 'products'
-        file_format     : 'csv' or 'json' (default: 'csv')
-        schema_evolution: If True, merges new columns automatically
-
-    Returns:
-        A streaming DataFrame with injected metadata columns
+        spark      : Active SparkSession
+        raw_path   : Full Volume path to the source folder
+        source     : 'orders', 'customers', or 'products'
+        file_format: 'csv' or 'json' (default: 'csv')
     """
-    schema = get_autoloader_schema(source)
+    schema = get_bronze_schema(source)
 
-    # When an explicit schema is provided, evolution mode must be "none"
-    # "addNewColumns" is only compatible with schema inference (no .schema())
-    reader = (
-        spark.readStream
-             .format("cloudFiles")
-             .option("cloudFiles.format", file_format)
-             .option("cloudFiles.schemaLocation", checkpoint_path)
-             .option("cloudFiles.schemaEvolutionMode", "none")
-             .option("header", "true")          # CSV only
-             .option("inferSchema", "false")     # We always use explicit schema
+    df = (
+        spark.read
+             .format(file_format)
+             .option("header", "true")
+             .option("inferSchema", "false")
              .schema(schema)
              .load(raw_path)
     )
 
-    # ── Metadata injection ────────────────────────────────────────────────────
-    # _ingested_at : timestamp when the record was written to Bronze
-    # _source_file : original filename for lineage & debugging
+    # Metadata injection
     df = (
-        reader
+        df
         .withColumn("_ingested_at", F.current_timestamp())
-        .withColumn("_source_file", F.col("_metadata.file_path"))
+        .withColumn("_source_file",  F.lit(raw_path))
     )
 
     return df
 
 
-def write_bronze_stream(
-    df,
-    bronze_table_path: str,
-    checkpoint_path: str,
+def write_bronze_table(
+    df: DataFrame,
     table_name: str,
     partition_by: str = None,
 ) -> None:
     """
-    Writes an Autoloader streaming DataFrame to a Bronze Delta table.
-    Uses 'append' mode — Bronze is an immutable raw layer (no upserts here).
+    Writes a batch DataFrame to a Bronze Delta managed table.
+    Uses overwrite mode — Bronze is fully reloaded on each run.
 
     Args:
-        df               : Streaming DataFrame from read_with_autoloader()
-        bronze_table_path: Delta storage path for this Bronze table
-        checkpoint_path  : Autoloader checkpoint path (same as reader)
-        table_name       : Unity Catalog table name (catalog.schema.table)
-        partition_by     : Optional column to partition Delta table by
+        df           : DataFrame from read_batch()
+        table_name   : Unity Catalog table name (catalog.schema.table)
+        partition_by : Optional column to partition by
     """
     writer = (
-        df.writeStream
+        df.write
           .format("delta")
-          .outputMode("append")
-          .option("checkpointLocation", checkpoint_path)
-          .option("mergeSchema", "true")         # Allow schema evolution writes
+          .mode("overwrite")
+          .option("overwriteSchema", "true")
     )
 
     if partition_by:
         writer = writer.partitionBy(partition_by)
 
-    (
-        writer
-        .trigger(availableNow=True)              # Process all available files, then stop
-        .toTable(table_name)                     # Writes to Unity Catalog managed table
-        .awaitTermination()
-    )
+    writer.saveAsTable(table_name)
 
-    print(f"✅ Bronze ingestion complete → {table_name}")
+    print(f"✅ Bronze table written → {table_name}")
 
 
 def ingest_source(
@@ -160,15 +125,14 @@ def ingest_source(
     partition_by: str = None,
 ) -> None:
     """
-    End-to-end ingestion for a single source (orders / customers / products).
-    Combines read_with_autoloader() + write_bronze_stream() in one call.
+    End-to-end Bronze ingestion for a single source.
 
     Args:
         spark             : Active SparkSession
         source            : 'orders', 'customers', or 'products'
-        raw_path          : Raw files landing path
-        bronze_table_path : Delta path for Bronze table
-        checkpoint_path   : Autoloader checkpoint path
+        raw_path          : Volume path to raw CSV folder
+        bronze_table_path : Unused (kept for API compatibility)
+        checkpoint_path   : Unused (kept for API compatibility)
         table_name        : Unity Catalog table name
         file_format       : 'csv' or 'json'
         partition_by      : Optional partition column
@@ -177,18 +141,21 @@ def ingest_source(
     print(f"   Source path  : {raw_path}")
     print(f"   Target table : {table_name}")
 
-    df = read_with_autoloader(
+    df = read_batch(
         spark=spark,
         raw_path=raw_path,
-        checkpoint_path=checkpoint_path,
         source=source,
         file_format=file_format,
     )
 
-    write_bronze_stream(
+    row_count = df.count()
+    print(f"   Rows read    : {row_count:,}")
+
+    if row_count == 0:
+        raise ValueError(f"❌ No rows read from {raw_path} — check the file path and CSV content.")
+
+    write_bronze_table(
         df=df,
-        bronze_table_path=bronze_table_path,
-        checkpoint_path=checkpoint_path,
         table_name=table_name,
         partition_by=partition_by,
     )
