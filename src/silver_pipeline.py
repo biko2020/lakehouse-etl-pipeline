@@ -100,11 +100,10 @@ def cleanse_products(df: DataFrame) -> DataFrame:
     df = (
         df
         .filter(F.col("product_id").isNotNull())
-        .filter(F.col("unit_price") >= 0)
-
         .withColumn("product_name", F.trim(F.col("product_name")))
         .withColumn("category",     F.initcap(F.trim(F.col("category"))))
         .withColumn("unit_price",   F.round(F.col("unit_price").cast("double"), 2))
+        .filter(F.col("unit_price") >= 0)
 
         # Silver metadata
         .withColumn("_transformed_at", F.current_timestamp())
@@ -171,7 +170,7 @@ def run_quality_checks(df: DataFrame, source: str) -> DataFrame:
     if source == "orders":
         checks = [
             ("order_id nulls",    df.filter(F.col("order_id").isNull()).count(),   0,            "critical"),
-            ("negative quantity", df.filter(F.col("quantity") < 0).count(),        0,            "critical"),
+            ("negative quantity", df.filter(F.col("quantity").cast("double") < 0).count(), 0, "critical"),
             ("null order_date",   df.filter(F.col("order_date").isNull()).count(), total * 0.05, "warning"),
         ]
     elif source == "customers":
@@ -182,7 +181,7 @@ def run_quality_checks(df: DataFrame, source: str) -> DataFrame:
     elif source == "products":
         checks = [
             ("product_id nulls",  df.filter(F.col("product_id").isNull()).count(),  0,            "critical"),
-            ("zero price",        df.filter(F.col("unit_price") == 0).count(),      total * 0.05, "warning"),
+            ("zero price",        df.filter(F.col("unit_price").cast("double") == 0).count(), total * 0.05, "warning"),
         ]
     else:
         checks = []
