@@ -1,0 +1,43 @@
+flowchart LR
+    subgraph Sources["📂 Raw Sources"]
+        O[orders.csv]
+        C[customers.csv]
+        P[products.csv]
+    end
+
+    subgraph Volume["☁️ Unity Catalog Volume\n/Volumes/retail_lakehouse/etl/storage"]
+        RAW[raw/]
+    end
+
+    subgraph Bronze["🥉 Bronze Layer\nRaw Ingestion"]
+        BO[bronze_orders]
+        BC[bronze_customers]
+        BP[bronze_products]
+    end
+
+    subgraph Silver["🥈 Silver Layer\nCleanse & Model"]
+        SO[silver_orders]
+        SC[silver_customers]
+        SP[silver_products]
+    end
+
+    subgraph Gold["🥇 Gold Layer\nBusiness Analytics"]
+        G1[gold_sales_aggregations]
+        G2[gold_customer_lifetime_value]
+        G3[gold_daily_sales_trend]
+    end
+
+    subgraph BI["📊 BI & Analytics"]
+        PBI[Power BI]
+        SQL[Databricks\nSQL Editor]
+    end
+
+    O & C & P --> RAW
+    RAW -->|spark.read\nbatch ingest| BO & BC & BP
+    BO -->|MERGE\nDeduplicate\nCast & Cleanse| SO
+    BC --> SC
+    BP --> SP
+    SO & SP -->|Aggregations\nWindow Functions| G1
+    SO & SC -->|LTV Scoring\nChurn Risk| G2
+    SO -->|Time Series\n7d Rolling Avg| G3
+    G1 & G2 & G3 --> PBI & SQL
