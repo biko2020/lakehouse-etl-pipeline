@@ -32,44 +32,7 @@ This pipeline demonstrates real-world data engineering expertise across three ke
 └────────────────────────┘      └────────────────────────┘      └────────────────────────┘
 ```
 
-flowchart LR
-    subgraph Sources["📂 Raw Sources"]
-        O[orders.csv]
-        C[customers.csv]
-        P[products.csv]
-    end
-
-    subgraph Bronze["🥉 Bronze Layer"]
-        BO[bronze_orders]
-        BC[bronze_customers]
-        BP[bronze_products]
-    end
-
-    subgraph Silver["🥈 Silver Layer"]
-        SO[silver_orders]
-        SC[silver_customers]
-        SP[silver_products]
-    end
-
-    subgraph Gold["🥇 Gold Layer"]
-        G1[gold_sales_aggregations]
-        G2[gold_customer_lifetime_value]
-        G3[gold_daily_sales_trend]
-    end
-
-    subgraph BI["📊 BI & Analytics"]
-        PBI[Power BI]
-        SQL[Databricks SQL Editor]
-    end
-
-    O & C & P -->|spark.read| BO & BC & BP
-    BO -->|Cleanse + MERGE| SO
-    BC --> SC
-    BP --> SP
-    SO & SP -->|Aggregations| G1
-    SO & SC -->|LTV + Churn| G2
-    SO -->|Time Series| G3
-    G1 & G2 & G3 --> PBI & SQL
+![Architecture](/docs/architecture.mermaid)
 
 ---
 
