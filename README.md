@@ -1,6 +1,8 @@
 # 🏪 Retail Intelligence Lakehouse
 ### End-to-End Databricks ETL Pipeline · Medallion Architecture
-This project demonstrates my ability to design scalable, cost-efficient data pipelines on Databricks. I help businesses reduce cloud spend, ensure data reliability, and deliver analytics-ready datasets for BI and decision-making.
+
+> This project demonstrates my ability to design scalable, cost-efficient data pipelines on Databricks. I help businesses reduce cloud spend, ensure data reliability, and deliver analytics-ready datasets for BI and decision-making.
+
 ---
 
 ## 📌 Overview
@@ -11,7 +13,7 @@ This pipeline demonstrates real-world data engineering expertise across three ke
 
 | Pillar | Implementation |
 |---|---|
-| **Cost Optimization** | Incremental ingestion via Databricks Autoloader to minimize compute costs |
+| **Cost Optimization** | Batch ingestion with `spark.read` optimized for Databricks Free Edition |
 | **Data Integrity** | Schema enforcement, ACID transactions, and idempotent upserts with Delta Lake |
 | **Performance Engineering** | Query acceleration via Z-Ordering and partitioning strategies |
 
@@ -24,11 +26,13 @@ This pipeline demonstrates real-world data engineering expertise across three ke
 │      BRONZE LAYER      │      │      SILVER LAYER      │      │       GOLD LAYER       │
 │   (Raw Ingestion)      │      │  (Cleanse & Model)     │      │   (Business Logic)     │
 ├────────────────────────┤      ├────────────────────────┤      ├────────────────────────┤
-│ • Ingest CSV/JSON      │─────▶│ • Deduplication        │─────▶│ • Sales Aggregations   │
-│ • Schema Evolution     │      │ • Type Casting         │      │ • Customer Lifetime Val│
+│ • Ingest CSV files     │─────▶│ • Deduplication        │─────▶│ • Sales Aggregations   │
+│ • All-String Schema    │      │ • Type Casting         │      │ • Customer Lifetime Val│
 │ • Metadata Injection   │      │ • Join Dim/Fact Tables │      │ • SQL Analytics Ready  │
 └────────────────────────┘      └────────────────────────┘      └────────────────────────┘
 ```
+
+![Architecture](docs/architecture.mermaid)
 
 ---
 
@@ -37,28 +41,30 @@ This pipeline demonstrates real-world data engineering expertise across three ke
 ```
 lakehouse-etl-pipeline/
 │
-├── data/                         # Local simulation of Cloud Storage (S3/ADLS)
-│   ├── raw/                      # Source CSVs (Orders, Customers, Payments)
-│   │   ├── orders/               # orders.csv
-│   │   ├── customers/            # customers.csv
-│   │   └── products/             # products.csv
-│   └── delta/                    # Delta Lake storage (Bronze / Silver / Gold)
+├── data/
+│   └── raw/                      # Source CSVs (flat structure)
+│       ├── orders.csv
+│       ├── customers.csv
+│       └── products.csv
 │
 ├── notebooks/                    # Entry points for Databricks Workflows
-│   ├── 01_bronze_ingest.py       # Autoloader ingestion
-│   ├── 02_silver_transform.py    # Cleansing & modeling
-│   └── 03_gold_analytics.py      # Aggregations & BI-ready tables
+│   ├── 01_bronze_ingest.py       # Batch ingestion → Bronze Delta tables
+│   ├── 02_silver_transform.py    # Cleansing, dedup & MERGE → Silver
+│   └── 03_gold_analytics.py      # Aggregations & BI-ready tables → Gold
 │
 ├── src/                          # Core PySpark logic (reusable modules)
-│   ├── bronze_pipeline.py        # Schema inference & cloudFiles setup
+│   ├── bronze_pipeline.py        # Batch spark.read + Delta write
 │   ├── silver_pipeline.py        # MERGE (upsert) logic & data quality checks
-│   └── gold_pipeline.py          # Spark SQL transformations
+│   └── gold_pipeline.py          # Window functions & Spark SQL transformations
 │
-├── config/                       # Pipeline configuration
-│   └── pipeline_config.py        # Path settings (DBFS / S3 / ADLS)
+├── config/
+│   └── pipeline_config.py        # Unity Catalog paths (CATALOG / SCHEMA / VOLUME)
 │
-├── docs/                         # Architecture diagrams & data dictionary
-├── requirements.txt              # Dependencies
+├── docs/
+│   ├── dashboard/                # Screenshots of pipeline runs & BI visuals
+│   └── architecture.mermaid      # Architecture diagram
+│
+├── requirements.txt
 └── README.md
 ```
 
@@ -66,8 +72,8 @@ lakehouse-etl-pipeline/
 
 ## ⚙️ Technical Highlights
 
-### 💰 Cost-Efficient Ingestion — Autoloader
-Incremental file processing reduces cluster uptime and compute costs by only processing new or changed files rather than full reloads.
+### 💰 Cost-Efficient Ingestion — Bronze Layer
+Batch `spark.read` ingestion on Databricks Free Edition Serverless. All columns ingested as `StringType` — type casting is handled exclusively in the Silver layer following correct Medallion Architecture principles.
 
 ### 🔁 Idempotent Upserts — Silver Layer
 Delta Lake `MERGE` ensures that pipeline retries never produce duplicates. The Silver layer serves as the **Single Source of Truth** for all downstream consumers.
@@ -85,14 +91,23 @@ Delta Lake `MERGE` ensures that pipeline retries never produce duplicates. The S
 
 ## 🚀 How to Run
 
-**1. Clone to Databricks**
-> Use Databricks Repos to import this repository directly into your workspace.
+**1. Sign up for Databricks Free Edition**
+> [databricks.com/try-databricks](https://www.databricks.com/try-databricks) — no credit card required.
 
-**2. Configure Paths**
-> Update `config/pipeline_config.py` — set your `CATALOG`, `SCHEMA`, and `VOLUME` names to match what you created in Databricks Catalog Explorer.
+**2. Import the repo**
+> Workspace → Repos → Add Repo → paste your GitHub URL.
 
-**3. Run the Pipeline**
-> Execute notebooks sequentially, or orchestrate via Databricks Workflows:
+**3. Create Unity Catalog structure**
+> Catalog Explorer → Create: `retail_lakehouse` catalog → `etl` schema → `storage` volume.
+
+**4. Upload raw CSV files**
+> Upload `orders.csv`, `customers.csv`, `products.csv` to:
+> `/Volumes/retail_lakehouse/etl/storage/raw/`
+
+**5. Configure paths**
+> Update `config/pipeline_config.py` — set `CATALOG`, `SCHEMA`, and `VOLUME` to match your workspace.
+
+**6. Run the pipeline sequentially**
 ```
 01_bronze_ingest.py  →  02_silver_transform.py  →  03_gold_analytics.py
 ```
@@ -103,9 +118,41 @@ Delta Lake `MERGE` ensures that pipeline retries never produce duplicates. The S
 
 | Insight | Description |
 |---|---|
-| 🏆 **Top 5 Products by Revenue** | Monthly performance ranking across all product categories |
-| ⚠️ **Customer Churn Risk** | Detects customers inactive for more than 90 days |
-| 📈 **Daily Sales Trend** | Time-series analysis for executive and stakeholder reporting |
+| 🏆 **Top Products by Revenue** | Monthly performance ranking across all product categories |
+| ⚠️ **High Churn Risk Customers** | Detects customers inactive for more than 90 days |
+| 📈 **Daily Sales Trend (7-Day Avg)** | Rolling average time-series for executive reporting |
+
+---
+
+## 🖥️ Pipeline Screenshots
+
+### All 9 Delta Tables — Bronze / Silver / Gold
+![All 9 tables](docs/dashboard/showing%20all%209%20tables%20Bronze-Silver-Gold.png)
+
+### Notebook 01 — Bronze Ingestion (row counts)
+![Bronze run](docs/dashboard/successful%20run%20with%20row%20counts.png)
+
+### Notebook 02 — Silver Transformation (MERGE complete)
+![Silver run](docs/dashboard/successful%20run%20with%20MERGE%20complete.png)
+
+### Notebook 03 — Gold Query Results
+![Gold results](docs/dashboard/Gold%20table%20query%20results.png)
+
+---
+
+## 📊 BI Dashboard — Power BI
+
+### Top Products by Revenue
+![Top Products](docs/dashboard/Top%20Products%20by%20Revenue.png)
+
+### High Churn Risk Customers
+![Churn Risk](docs/dashboard/High%20Churn%20Risk%20Customers.png)
+
+### Daily Sales Trend (7-Day Avg)
+![Daily Trend](docs/dashboard/Daily%20Sales%20Trend%20(7-Day%20Avg).png)
+
+### Full Dashboard
+![Full Dashboard](docs/dashboard/all%20visuals%20together.png)
 
 ---
 
@@ -117,7 +164,7 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 
 ## 👤 Author
 
-**Brahim Ait Oufkir**  
+**Brahim Ait Oufkir**
 *Big Data Engineer · Freelance Consultant*
 
 [![Email](https://img.shields.io/badge/Email-aitoufkirbrahimab%40gmail.com-blue?style=flat-square&logo=gmail)](mailto:aitoufkirbrahimab@gmail.com)
